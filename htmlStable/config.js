@@ -1,1 +1,1 @@
-var g_host="47.92.208.166:8090";
+var g_host="localhost:8090";
