@@ -24,6 +24,10 @@ public class CacheServiceImpl implements CacheService {
 
     @Override
     public void setCommonCache(String key, Object value) {
+        if(value == null) {
+            commonCache.invalidate(key);
+            return;
+        }
         commonCache.put(key, value);
     }
 

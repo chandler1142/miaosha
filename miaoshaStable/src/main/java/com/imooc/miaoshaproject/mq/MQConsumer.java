@@ -2,8 +2,7 @@ package com.imooc.miaoshaproject.mq;
 
 import com.alibaba.fastjson.JSON;
 import com.imooc.miaoshaproject.dao.ItemStockDOMapper;
-import com.imooc.miaoshaproject.service.ItemService;
-import com.imooc.miaoshaproject.service.model.ItemModel;
+import com.imooc.miaoshaproject.service.CacheService;
 import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyContext;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;
@@ -37,6 +36,9 @@ public class MQConsumer {
     @Autowired
     private RedisTemplate redisTemplate;
 
+    @Autowired
+    private CacheService cacheService;
+
     @PostConstruct
     public void init() throws MQClientException {
         consumer = new DefaultMQPushConsumer("stock_consumer_group");
@@ -53,7 +55,12 @@ public class MQConsumer {
                 Integer itemId = (Integer) map.get("itemId");
                 Integer amount = (Integer) map.get("amount");
                 itemStockDOMapper.decreaseStock(itemId, amount);
-
+                redisTemplate.opsForValue().set("item_" + itemId, null);
+                try{
+                    cacheService.setCommonCache("item_" + itemId, null);
+                }catch (Exception e) {
+                    e.printStackTrace();
+                }
 
                 return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
             }
