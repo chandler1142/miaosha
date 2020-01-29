@@ -3,6 +3,7 @@ package com.imooc.miaoshaproject.controller;
 import com.imooc.miaoshaproject.controller.viewobject.ItemVO;
 import com.imooc.miaoshaproject.error.BusinessException;
 import com.imooc.miaoshaproject.response.CommonReturnType;
+import com.imooc.miaoshaproject.service.CacheService;
 import com.imooc.miaoshaproject.service.ItemService;
 import com.imooc.miaoshaproject.service.model.ItemModel;
 import org.joda.time.format.DateTimeFormat;
@@ -31,6 +32,9 @@ public class ItemController extends BaseController {
     @Autowired
     private RedisTemplate redisTemplate;
 
+    @Autowired
+    private CacheService cacheService;
+
     //创建商品的controller
     @RequestMapping(value = "/create", method = {RequestMethod.POST}, consumes = {CONTENT_TYPE_FORMED})
     @ResponseBody
@@ -57,19 +61,23 @@ public class ItemController extends BaseController {
     @RequestMapping(value = "/get", method = {RequestMethod.GET})
     @ResponseBody
     public CommonReturnType getItem(@RequestParam(name = "id") Integer id) {
+        ItemModel itemModel = null;
 
-        //根据商品的id到redis内获取
-        ItemModel itemModel = (ItemModel) redisTemplate.opsForValue().get("item_" + id);
-        //若redis内没有对应的ItemModel，则访问下游service
+        //先取本地缓存
+        itemModel = (ItemModel) cacheService.getFromCommonCache("item_" + id);
         if (itemModel == null) {
-            itemModel = itemService.getItemById(id);
-            //设备itemModel到redis内
-            redisTemplate.opsForValue().set("item_" + id, itemModel);
-            redisTemplate.expire("item_" + id, 10, TimeUnit.MINUTES);
+            //根据商品的id到redis内获取
+            itemModel = (ItemModel) redisTemplate.opsForValue().get("item_" + id);
+            //若redis内没有对应的ItemModel，则访问下游service
+            if (itemModel == null) {
+                itemModel = itemService.getItemById(id);
+                //设备itemModel到redis内
+                redisTemplate.opsForValue().set("item_" + id, itemModel);
+                redisTemplate.expire("item_" + id, 10, TimeUnit.MINUTES);
+            }
+            //填充本地缓存
+            cacheService.setCommonCache("item_" + id, itemModel);
         }
-
-//        ItemModel itemModel = itemService.getItemById(id);
-
 
         ItemVO itemVO = convertVOFromModel(itemModel);
 

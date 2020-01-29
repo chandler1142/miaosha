@@ -3,10 +3,8 @@ package com.imooc.miaoshaproject.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.imooc.miaoshaproject.config.serializer.ItemModelDeserializer;
 import com.imooc.miaoshaproject.config.serializer.JodaDateTimeJsonDeserializer;
 import com.imooc.miaoshaproject.config.serializer.JodaDateTimeJsonSerializer;
-import com.imooc.miaoshaproject.service.model.ItemModel;
 import org.joda.time.DateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
