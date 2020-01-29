@@ -1,15 +1,22 @@
 package com.imooc.miaoshaproject.service.impl;
 
 import com.imooc.miaoshaproject.dao.PromoDOMapper;
+import com.imooc.miaoshaproject.dataobject.ItemDO;
 import com.imooc.miaoshaproject.dataobject.PromoDO;
+import com.imooc.miaoshaproject.error.BusinessException;
+import com.imooc.miaoshaproject.error.EmBusinessError;
+import com.imooc.miaoshaproject.service.ItemService;
 import com.imooc.miaoshaproject.service.PromoService;
+import com.imooc.miaoshaproject.service.model.ItemModel;
 import com.imooc.miaoshaproject.service.model.PromoModel;
 import org.joda.time.DateTime;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by hzllb on 2018/11/18.
@@ -19,6 +26,12 @@ public class PromoServiceImpl implements PromoService {
 
     @Autowired
     private PromoDOMapper promoDOMapper;
+
+    @Autowired
+    private ItemService itemService;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     @Override
     public PromoModel getPromoByItemId(Integer itemId) {
@@ -41,6 +54,26 @@ public class PromoServiceImpl implements PromoService {
         }
         return promoModel;
     }
+
+    @Override
+    public void publishPromo(Integer promoId) throws BusinessException {
+        //通过活动Id获取活动
+        PromoDO promoDO = promoDOMapper.selectByItemId(promoId);
+        if(promoDO == null) {
+            throw new BusinessException(EmBusinessError.PROMO_NOT_EXISTS, EmBusinessError.PROMO_NOT_EXISTS.getErrMsg());
+        }
+
+        if(promoDO.getItemId() == null || promoDO.getItemId().intValue() == 0) {
+            return;
+        }
+
+        ItemModel itemModel = itemService.getItemById(promoDO.getItemId());
+
+
+        //将库存同步到redis内
+        redisTemplate.opsForValue().set("promo_item_stock_" + itemModel.getId(), itemModel.getStock(), 10, TimeUnit.MINUTES);
+    }
+
     private PromoModel convertFromDataObject(PromoDO promoDO){
         if(promoDO == null){
             return null;
