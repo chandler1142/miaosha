@@ -108,6 +108,7 @@ public class ItemController extends BaseController {
     @ResponseBody
     public CommonReturnType publishpromo(@RequestParam(name = "id") Integer id) throws BusinessException {
         promoService.publishPromo(id);
+        redisTemplate.delete("promo_item_stock_invalid_");
         return CommonReturnType.create(null);
     }
 

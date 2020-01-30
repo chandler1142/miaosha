@@ -144,15 +144,18 @@ public class ItemServiceImpl implements ItemService {
     @Transactional
     public boolean decreaseStock(Integer itemId, Integer amount) throws BusinessException {
         long result = redisTemplate.opsForValue().increment("promo_item_stock_" + itemId, amount.intValue() * -1);
-        if (result >= 0) {
+        if (result > 0) {
             //更新库存成功
+            return true;
+        } else if (result == 0) {
+            //打上库存已经售罄的标识
+            redisTemplate.opsForValue().set("promo_item_stock_invalid_" + itemId, "true");
             return true;
         } else {
             //更新库存失败
             redisTemplate.opsForValue().increment("promo_item_stock_" + itemId, amount.intValue() * 1);
             return false;
         }
-
     }
 
     @Override
@@ -178,7 +181,7 @@ public class ItemServiceImpl implements ItemService {
         StockLogDO stockLogDO = new StockLogDO();
         stockLogDO.setAmount(amount);
         stockLogDO.setItemId(itemId);
-        stockLogDO.setStockLogId(UUID.randomUUID().toString().replace("-",""));
+        stockLogDO.setStockLogId(UUID.randomUUID().toString().replace("-", ""));
         stockLogDO.setStatus(1);
         stockLogDOMapper.insertSelective(stockLogDO);
         return stockLogDO.getStockLogId();

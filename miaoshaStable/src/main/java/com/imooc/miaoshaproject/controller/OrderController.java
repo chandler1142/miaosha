@@ -6,7 +6,6 @@ import com.imooc.miaoshaproject.mq.MQProducer;
 import com.imooc.miaoshaproject.response.CommonReturnType;
 import com.imooc.miaoshaproject.service.ItemService;
 import com.imooc.miaoshaproject.service.OrderService;
-import com.imooc.miaoshaproject.service.model.OrderModel;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -58,12 +57,16 @@ OrderController extends BaseController {
         }
 
         String userId = String.valueOf(redisTemplate.opsForValue().get(token));
+        //判断库存是否已经售罄
+        if (redisTemplate.hasKey("promo_item_stock_invalid_" + itemId)) {
+            throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH, "库存不足");
+        }
 
         //先加入库存流水init状态
         String stockLogId = itemService.initStockLog(itemId, amount);
 
         //再去完成对应的下单事务型消息机制
-        if(producer.transactionAsyncReduceStock(Integer.valueOf(userId), promoId, itemId, amount, stockLogId)) {
+        if (producer.transactionAsyncReduceStock(Integer.valueOf(userId), promoId, itemId, amount, stockLogId)) {
             return CommonReturnType.create(null);
         } else {
             throw new BusinessException(EmBusinessError.UNKNOWN_ERROR, "下单失败");
