@@ -83,6 +83,8 @@ public class ItemController extends BaseController {
             cacheService.setCommonCache("item_" + id, itemModel);
         }
 
+        redisTemplate.opsForValue().set("promo_item_stock_" + itemModel.getId(), itemModel.getStock(), 10, TimeUnit.MINUTES);
+
         ItemVO itemVO = convertVOFromModel(itemModel);
 
         return CommonReturnType.create(itemVO);

@@ -23,14 +23,14 @@ public interface ItemService {
     ItemModel getItemByIdInCache(Integer id);
 
     //库存扣减
-    boolean decreaseStock(Integer itemId,Integer amount)throws BusinessException;
+    boolean decreaseStock(Integer itemId, Integer amount) throws BusinessException;
 
-    boolean increaseStock(Integer itemId,Integer amount);
+    boolean increaseStock(Integer itemId, Integer amount);
 
     boolean asyncReduceStock(Integer itemId, Integer amount);
 
     //商品销量增加
-    void increaseSales(Integer itemId,Integer amount)throws BusinessException;
+    void increaseSales(Integer itemId, Integer amount) throws BusinessException;
 
     //初始化库存流水
     String initStockLog(Integer itemId, Integer amount);
