@@ -2,6 +2,7 @@ package com.imooc.miaoshaproject.controller;
 
 import com.imooc.miaoshaproject.error.BusinessException;
 import com.imooc.miaoshaproject.error.EmBusinessError;
+import com.imooc.miaoshaproject.mq.MQProducer;
 import com.imooc.miaoshaproject.response.CommonReturnType;
 import com.imooc.miaoshaproject.service.OrderService;
 import com.imooc.miaoshaproject.service.model.OrderModel;
@@ -32,6 +33,9 @@ OrderController extends BaseController {
     @Autowired
     RedisTemplate redisTemplate;
 
+    @Autowired
+    MQProducer producer;
+
     //封装下单请求
     @RequestMapping(value = "/createorder", method = {RequestMethod.POST}, consumes = {CONTENT_TYPE_FORMED})
     @ResponseBody
@@ -39,7 +43,6 @@ OrderController extends BaseController {
                                         @RequestParam(name = "amount") Integer amount,
                                         @RequestParam(name = "promoId", required = false) Integer promoId) throws BusinessException {
 
-//        Boolean isLogin = (Boolean) httpServletRequest.getSession().getAttribute("IS_LOGIN");
         String token = null;
         Map<String, String[]> parameterMap = httpServletRequest.getParameterMap();
         if (parameterMap.get("token") == null || StringUtils.isEmpty(token = parameterMap.get("token")[0])) {
@@ -51,11 +54,11 @@ OrderController extends BaseController {
         }
 
         String userId = String.valueOf(redisTemplate.opsForValue().get(token));
-        //获取用户的登陆信息
-//        UserModel userModel = (UserModel) httpServletRequest.getSession().getAttribute("LOGIN_USER");
 
-        OrderModel orderModel = orderService.createOrder(Integer.parseInt(userId), itemId, promoId, amount);
-
-        return CommonReturnType.create(null);
+        if(producer.transactionAsyncReduceStock(Integer.valueOf(userId), promoId, itemId, amount)) {
+            return CommonReturnType.create(null);
+        } else {
+            throw new BusinessException(EmBusinessError.UNKNOWN_ERROR, "未知错误");
+        }
     }
 }

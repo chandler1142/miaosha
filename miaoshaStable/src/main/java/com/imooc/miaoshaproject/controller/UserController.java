@@ -1,6 +1,5 @@
 package com.imooc.miaoshaproject.controller;
 
-import com.alibaba.druid.support.json.JSONUtils;
 import com.imooc.miaoshaproject.controller.viewobject.UserVO;
 import com.imooc.miaoshaproject.error.BusinessException;
 import com.imooc.miaoshaproject.error.EmBusinessError;
@@ -147,14 +146,9 @@ public class UserController extends BaseController {
 
         //生成登录凭证Token
         String uuidToken = UUID.randomUUID().toString();
-        uuidToken = uuidToken.replace("-","");
+        uuidToken = uuidToken.replace("-", "");
         //建议将token和用户的登录状态关联
-        redisTemplate.opsForValue().set(uuidToken, userModel.getId());
-        redisTemplate.expire(uuidToken, 1, TimeUnit.HOURS);
-
-        //将登陆凭证加入到用户登陆成功的session内
-//        this.httpServletRequest.getSession().setAttribute("IS_LOGIN",true);
-//        this.httpServletRequest.getSession().setAttribute("LOGIN_USER",userModel);
+        redisTemplate.opsForValue().set(uuidToken, userModel.getId(), 1, TimeUnit.HOURS);
 
         return CommonReturnType.create(uuidToken);
     }
