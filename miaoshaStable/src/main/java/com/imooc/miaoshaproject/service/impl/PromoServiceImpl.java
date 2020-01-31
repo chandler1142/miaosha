@@ -77,6 +77,9 @@ public class PromoServiceImpl implements PromoService {
 
         //将库存同步到redis内
         redisTemplate.opsForValue().set("promo_item_stock_" + itemModel.getId(), itemModel.getStock(), 10, TimeUnit.MINUTES);
+
+        //将大闸的限制数字设置到redis内
+        redisTemplate.opsForValue().set("promo_door_count_" + itemModel.getId(), itemModel.getStock() * 5, 10, TimeUnit.MINUTES);
     }
 
     @Override
@@ -116,6 +119,10 @@ public class PromoServiceImpl implements PromoService {
             return null;
         }
 
+        long result = redisTemplate.opsForValue().increment("promo_door_count_" + itemModel.getId(), -1);
+        if (result < 0) {
+            return null;
+        }
         //生成token，并且存入redis内
         String token = UUID.randomUUID().toString().replace("-", "");
 

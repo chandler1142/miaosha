@@ -13,8 +13,10 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import javax.annotation.PostConstruct;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Map;
+import java.util.concurrent.*;
 
 /**
  * Created by hzllb on 2018/11/18.
@@ -42,6 +44,14 @@ OrderController extends BaseController {
 
     @Autowired
     PromoService promoService;
+
+    private ExecutorService executorService;
+
+    @PostConstruct
+    public void init() {
+        executorService = Executors.newFixedThreadPool(20);
+
+    }
 
     //生成秒杀令牌
     @RequestMapping(value = "/generateToken", method = {RequestMethod.POST}, consumes = {CONTENT_TYPE_FORMED})
@@ -108,14 +118,31 @@ OrderController extends BaseController {
             throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH, "库存不足");
         }
 
-        //先加入库存流水init状态
-        String stockLogId = itemService.initStockLog(itemId, amount);
 
-        //再去完成对应的下单事务型消息机制
-        if (producer.transactionAsyncReduceStock(Integer.valueOf(userId), promoId, itemId, amount, stockLogId)) {
-            return CommonReturnType.create(null);
-        } else {
+        //同步调用线程池的submit方法
+        //拥塞窗口为20的等待队列，用来队列泄洪
+        Future<Object> future = executorService.submit(new Callable<Object>() {
+
+            @Override
+            public Object call() throws Exception {
+                //先加入库存流水init状态
+                String stockLogId = itemService.initStockLog(itemId, amount);
+
+                //再去完成对应的下单事务型消息机制
+                if (!producer.transactionAsyncReduceStock(Integer.valueOf(userId), promoId, itemId, amount, stockLogId)) {
+                    throw new BusinessException(EmBusinessError.UNKNOWN_ERROR, "下单失败");
+                }
+                return null;
+            }
+        });
+
+        try {
+            future.get();
+        } catch (Exception e) {
             throw new BusinessException(EmBusinessError.UNKNOWN_ERROR, "下单失败");
         }
+
+        return CommonReturnType.create(null);
+
     }
 }
